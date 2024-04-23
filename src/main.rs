@@ -1,7 +1,11 @@
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::{
+    env, fs,
+    io::{Read, Write},
+    net::{TcpListener, TcpStream},
+    path::Path,
+};
 
-fn handle_client(mut stream: TcpStream) {
+fn handle_client(mut stream: TcpStream, directory: &str) {
     println!("Client connected: {}", stream.peer_addr().unwrap());
 
     let mut buf = [0; 1024];
@@ -18,7 +22,20 @@ fn handle_client(mut stream: TcpStream) {
                     let url = request_parts[1];
                     println!("Requested URL: {}", url);
 
-                    if url == "/user-agent" {
+                    if url.starts_with("/files/") {
+                        let file_path = format!("{}{}", directory, &url[7..]);
+                        if let Ok(contents) = read_file(&file_path) {
+                            let content_length = contents.len();
+
+                            let response = format!(
+                                "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {}\r\n\r\n{}", content_length, contents
+                            );
+                            stream.write_all(response.as_bytes()).unwrap();
+                        } else {
+                            let response = "HTTP/1.1 404 Not Found\r\n\r\n";
+                            stream.write_all(response.as_bytes()).unwrap();
+                        }
+                    } else if url == "/user-agent" {
                         let user_agent = extract_user_agent(&request_str);
                         println!("Extracted User Agent: {}", user_agent);
                         let content_length = user_agent.len();
@@ -70,7 +87,26 @@ fn extract_user_agent(request: &str) -> String {
     }
     String::from("Unknown User-Agent")
 }
+
+fn read_file(file_path: &str) -> Result<String, std::io::Error> {
+    if Path::new(&file_path).exists() {
+        fs::read_to_string(file_path)
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "File not found",
+        ))
+    }
+}
+
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    if args.len() != 3 || args[1] != "--directory" {
+        println!("Usage: ./your_server.sh --directory <directory>");
+        return;
+    }
+    let directory = &args[2];
+
     let address = "127.0.0.1:4221";
 
     let listener = TcpListener::bind(address).expect("Failed to bind to address");
@@ -80,8 +116,9 @@ fn main() {
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                std::thread::spawn(|| {
-                    handle_client(stream);
+                let directory = directory.to_string();
+                std::thread::spawn(move || {
+                    handle_client(stream, &directory);
                 });
             }
             Err(err) => {
