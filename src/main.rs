@@ -18,9 +18,13 @@ fn handle_client(mut stream: TcpStream) {
                     let url = request_parts[1];
                     println!("Requested URL: {}", url);
 
-                    if url.starts_with("/echo") {
+                    if url.starts_with("/echo/") {
                         let bodycontent = url.split("/").skip(2).next().unwrap();
                         let contentlength = bodycontent.len();
+
+                        println!("Body Content: {}", bodycontent);
+                        println!("Content Length: {}", contentlength);
+
                         let response = format!(
                             "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}", contentlength, bodycontent
                         );
