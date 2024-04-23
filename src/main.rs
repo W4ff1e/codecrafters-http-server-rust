@@ -101,11 +101,11 @@ fn read_file(file_path: &str) -> Result<String, std::io::Error> {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 3 || args[1] != "--directory" {
-        println!("Usage: ./your_server.sh --directory <directory>");
-        return;
-    }
-    let directory = &args[2];
+    let directory = if args.len() == 3 && args[1] == "--directory" {
+        &args[2]
+    } else {
+        "./" // Default to the current working directory if --directory flag is not provided
+    };
 
     let address = "127.0.0.1:4221";
 
