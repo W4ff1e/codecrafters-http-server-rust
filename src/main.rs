@@ -18,13 +18,15 @@ fn handle_client(mut stream: TcpStream) {
                     let url = request_parts[1];
                     println!("Requested URL: {}", url);
 
-                    let bodycontent = url.split("/").skip(2).next().unwrap();
-                    let contentlength = bodycontent.len();
-
                     if url.starts_with("/echo") {
+                        let bodycontent = url.split("/").skip(2).next().unwrap();
+                        let contentlength = bodycontent.len();
                         let response = format!(
                             "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}", contentlength, bodycontent
                         );
+                        stream.write_all(response.as_bytes()).unwrap();
+                    } else if url == "/" {
+                        let response = "HTTP/1.1 200 OK\r\n\r\n";
                         stream.write_all(response.as_bytes()).unwrap();
                     } else {
                         let response = "HTTP/1.1 404 Not Found\r\n\r\n";
