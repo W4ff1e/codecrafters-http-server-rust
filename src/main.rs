@@ -18,7 +18,16 @@ fn handle_client(mut stream: TcpStream) {
                     let url = request_parts[1];
                     println!("Requested URL: {}", url);
 
-                    if url.starts_with("/echo/") {
+                    if url == "/user-agent" {
+                        let user_agent = extract_user_agent(&request_str);
+                        println!("Extracted User Agent: {}", user_agent);
+                        let content_length = user_agent.len();
+
+                        let response = format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}", content_length, user_agent
+                        );
+                        stream.write_all(response.as_bytes()).unwrap();
+                    } else if url.starts_with("/echo/") {
                         // Extract the part after "/echo/"
                         let bodycontent = &url[6..];
                         println!("Extracted Content: {}", bodycontent);
@@ -53,6 +62,14 @@ fn handle_client(mut stream: TcpStream) {
     }
 }
 
+fn extract_user_agent(request: &str) -> String {
+    for line in request.lines() {
+        if line.starts_with("User-Agent:") {
+            return line.trim_start_matches("User-Agent: ").to_string();
+        }
+    }
+    String::from("Unknown User-Agent")
+}
 fn main() {
     let address = "127.0.0.1:4221";
 
