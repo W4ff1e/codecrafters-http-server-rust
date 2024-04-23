@@ -21,11 +21,15 @@ fn handle_client(mut stream: TcpStream) {
                     if url.starts_with("/echo/") {
                         let mut bodycontent = String::from("/");
                         let mut url_segments = url.split('/');
-                        if let Some(url) = url_segments.find(|s| *s == "echo") {
-                            // Collect the remaining urls to form the response path
-                            let rest_path: Vec<&str> =
-                                url_segments.skip_while(|s| *s != url).skip(1).collect();
-                            bodycontent = rest_path.join("/");
+                        if let Some(_) = url_segments.next() {
+                            if let Some(url_segment) = url_segments.find(|s| *s == "echo") {
+                                // Collect the remaining urls to form the response path
+                                let rest_path: Vec<&str> = url_segments
+                                    .skip_while(|s| *s != url_segment)
+                                    .skip(1)
+                                    .collect();
+                                bodycontent = rest_path.join("/");
+                            }
                         }
 
                         let contentlength = bodycontent.len();
