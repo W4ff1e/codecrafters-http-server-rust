@@ -19,23 +19,16 @@ fn handle_client(mut stream: TcpStream) {
                     println!("Requested URL: {}", url);
 
                     if url.starts_with("/echo/") {
-                        let mut bodycontent = String::from("/");
-                        let mut url_segments = url.split('/');
-                        if let Some(_) = url_segments.next() {
-                            if let Some(url_segment) = url_segments.find(|s| *s == "echo") {
-                                // Collect the remaining urls to form the response path
-                                let rest_path: Vec<&str> = url_segments
-                                    .skip_while(|s| *s != url_segment)
-                                    .skip(1)
-                                    .collect();
-                                bodycontent = rest_path.join("/");
-                            }
-                        }
+                        // Extract the part after "/echo/"
+                        let bodycontent = &url[6..];
+                        println!("Extracted Content: {}", bodycontent);
 
                         let contentlength = bodycontent.len();
-
-                        println!("Body Content: {}", bodycontent);
                         println!("Content Length: {}", contentlength);
+
+                        if contentlength == 0 {
+                            println!("Body content is empty!");
+                        }
 
                         let response = format!(
                             "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}", contentlength, bodycontent
