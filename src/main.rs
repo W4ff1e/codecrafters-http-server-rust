@@ -1,42 +1,49 @@
-use std::{
-    io::{BufRead, BufReader, Write},
-    net::TcpListener,
-};
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
 
-fn main() {
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    println!("Logs from your program will appear here!");
+fn handle_client(mut stream: TcpStream) {
+    println!("Client connected: {}", stream.peer_addr().unwrap());
 
-    // Uncomment this block to pass the first stage
-
-    const RESPONSE_200: &str = "HTTP/1.1 200 OK\r\n\r\n";
-    const RESPONSE_404: &str = "HTTP/1.1 404 Not Found\r\n\r\n";
-
-    let listener = TcpListener::bind("127.0.0.1:4221").unwrap();
-
-    for stream in listener.incoming() {
-        match stream {
-            Ok(mut stream) => {
-                println!("accepted new connection");
-                let mut reader = BufReader::new(stream.try_clone().unwrap());
-                let mut request_line = String::new();
-                reader.read_line(&mut request_line).unwrap();
-                let path = extract_path(&mut request_line);
-
-                match path {
-                    "/" => stream.write_all(RESPONSE_200.as_bytes()).unwrap(),
-
-                    _ => stream.write_all(RESPONSE_404.as_bytes()).unwrap(),
-                }
+    let mut buf = [0; 1024];
+    match stream.read(&mut buf) {
+        Ok(0) => {
+            println!("Client disconnected");
+            return;
+        }
+        Ok(_) => {
+            let request_str = String::from_utf8_lossy(&buf);
+            if request_str.contains("GET / HTTP/1.1") {
+                let response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain";
+                stream.write_all(response.as_bytes()).unwrap();
+            } else {
+                let response =
+                    "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n404 Not Found";
+                stream.write_all(response.as_bytes()).unwrap();
             }
-            Err(e) => {
-                println!("error: {}", e);
-            }
+        }
+        Err(err) => {
+            eprintln!("Error reading from socket: {}", err);
         }
     }
 }
 
-fn extract_path(request_line: &str) -> &str {
-    let parts = request_line.split(" ").collect::<Vec<&str>>();
-    parts[1]
+fn main() {
+    let address = "127.0.0.1:4221";
+
+    let listener = TcpListener::bind(address).expect("Failed to bind to address");
+
+    println!("Server listening on {}", address);
+
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
+                std::thread::spawn(|| {
+                    handle_client(stream);
+                });
+            }
+            Err(err) => {
+                eprintln!("Error accepting connection: {}", err);
+            }
+        }
+    }
 }
