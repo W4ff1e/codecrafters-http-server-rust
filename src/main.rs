@@ -24,6 +24,7 @@ fn handle_client(mut stream: TcpStream, directory: &str) {
 
                     if url.starts_with("/files/") {
                         let file_path = format!("{}{}", directory, &url[7..]);
+                        println!("Requested File Path: {}", file_path);
                         if let Ok(contents) = read_file(&file_path) {
                             let content_length = contents.len();
 
