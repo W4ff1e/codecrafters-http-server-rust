@@ -13,11 +13,10 @@ fn handle_client(mut stream: TcpStream) {
         Ok(_) => {
             let request_str = String::from_utf8_lossy(&buf);
             if request_str.contains("GET / HTTP/1.1") {
-                let response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain";
+                let response = "HTTP/1.1 200 OK";
                 stream.write_all(response.as_bytes()).unwrap();
             } else {
-                let response =
-                    "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n404 Not Found";
+                let response = "HTTP/1.1 404 Not Found";
                 stream.write_all(response.as_bytes()).unwrap();
             }
         }
