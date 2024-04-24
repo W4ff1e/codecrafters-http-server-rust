@@ -80,13 +80,16 @@ fn handle_client(mut stream: TcpStream, directory: &str) {
                     }
                 } else if method == "POST" {
                     if url.starts_with("/files/") {
-                        let file_path = format!("{}{}", directory, &url[7..]);
+                        let content_length = extract_content_length(&request_str);
                         let body_start = request_str.find("\r\n\r\n").unwrap_or(0) + 4;
                         let body = &request_str[body_start..];
 
                         println!("POST body: {}", body);
 
-                        if let Err(err) = save_file(&file_path, body) {
+                        let file_path = format!("{}{}", directory, &url[7..]);
+                        println!("File Path: {}", file_path);
+
+                        if let Err(err) = save_file(&file_path, body, content_length) {
                             eprintln!("Error saving file: {}", err);
                             let response = "HTTP/1.1 500 Internal Server Error\r\n\r\n";
                             stream.write_all(response.as_bytes()).unwrap();
@@ -122,6 +125,18 @@ fn extract_user_agent(request: &str) -> String {
     String::from("Unknown User-Agent")
 }
 
+fn extract_content_length(request: &str) -> usize {
+    let mut content_length = 0;
+    for line in request.lines() {
+        if line.starts_with("Content-Length:") {
+            if let Some(len) = line.split(":").nth(1) {
+                content_length = len.trim().parse().unwrap_or(0);
+            }
+        }
+    }
+    content_length
+}
+
 fn read_file(file_path: &str) -> Result<String, std::io::Error> {
     if Path::new(&file_path).exists() {
         fs::read_to_string(file_path)
@@ -133,9 +148,12 @@ fn read_file(file_path: &str) -> Result<String, std::io::Error> {
     }
 }
 
-fn save_file(file_path: &str, contents: &str) -> Result<(), std::io::Error> {
-    fs::write(file_path, contents)
+fn save_file(file_path: &str, contents: &str, content_length: usize) -> Result<(), std::io::Error> {
+    let trimmed_contents = contents.trim_end_matches('\0');
+    let truncated_contents = &trimmed_contents[..content_length];
+    fs::write(file_path, truncated_contents)
 }
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let directory = if args.len() == 3 && args[1] == "--directory" {
